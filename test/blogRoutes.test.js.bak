@@ -1,0 +1,89 @@
+import request from 'supertest';
+import mongoose from 'mongoose';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import express from 'express';
+import blogRoutes from '../routes/blogRoutes';
+import BlogPost from '../models/BlogPost';
+
+const app = express();
+app.use(express.json());
+app.use('/posts', blogRoutes);
+
+describe('Blog API', () => {
+    let mongoServer;
+
+    beforeAll(async () => {
+        mongoServer = await MongoMemoryServer.create();
+        const mongoUri = mongoServer.getUri();
+        await mongoose.connect(mongoUri);
+    });
+
+    afterAll(async () => {
+        await mongoose.disconnect();
+        await mongoServer.stop();
+    });
+
+    afterEach(async () => {
+        await BlogPost.deleteMany();
+    });
+
+    test('GET /posts - success', async () => {
+        const post = new BlogPost({
+            title: 'Test Post',
+            body: 'This is a test blog post',
+            author: 'Tester'
+        });
+        await post.save();
+
+        const response = await request(app).get('/posts');
+        expect(response.status).toBe(200);
+        expect(response.body.length).toBe(1);
+        expect(response.body[0].title).toEqual(post.title);
+    });
+
+    test('POST /posts - create a new post', async () => {
+        const postData = {
+            title: 'New Post',
+            body: 'Content of the new post',
+            author: 'New Author'
+        };
+
+        const response = await request(app).post('/posts').send(postData);
+        expect(response.status).toBe(201);
+        expect(response.body.title).toEqual(postData.title);
+        expect(response.body.body).toEqual(postData.body);
+        expect(response.body.author).toEqual(postData.author);
+    });
+
+    test('PUT /posts/:id - update post', async () => {
+        const post = new BlogPost({
+            title: 'Original Title',
+            body: 'Original Content',
+            author: 'Author'
+        });
+        await post.save();
+
+        const updatedData = { title: 'Updated Title', body: 'Updated Content' };
+        const response = await request(app).put(`/posts/${post._id}`).send(updatedData);
+        expect(response.status).toBe(200);
+        expect(response.body.title).toEqual(updatedData.title);
+        expect(response.body.body).toEqual(updatedData.body);
+    });
+
+    test('DELETE /posts/:id - delete post', async () => {
+        const post = new BlogPost({
+            title: 'Post to delete',
+            body: 'Content of the post',
+            author: 'Deleter'
+        });
+        await post.save();
+
+        const response = await request(app).delete(`/posts/${post._id}`);
+        expect(response.status).toBe(204);
+
+        const fetchPost = await BlogPost.findById(post._id);
+        expect(fetchPost).toBeNull();
+    });
+
+    // Additional tests for error cases...
+});
