@@ -1,17 +1,15 @@
-import express from 'express';
-import BlogPost from '../models/BlogPost.js';
-import { check, validationResult } from 'express-validator';
+const express = require('express');
+const { check, validationResult } = require('express-validator');
+const BlogPost = require('../models/BlogPost'); // Make sure the path is correct
 
 const router = express.Router();
 
-// Validators for different routes
 const postValidators = [
   check('title').not().isEmpty().withMessage('Title is required'),
   check('body').not().isEmpty().withMessage('Body is required'),
   check('author').not().isEmpty().withMessage("Author's name is required"),
 ];
 
-// Get all blog posts
 router.get('/', async (req, res) => {
   try {
     const posts = await BlogPost.find();
@@ -23,7 +21,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get a single blog post by ID
 router.get('/:id', async (req, res) => {
   try {
     const post = await BlogPost.findById(req.params.id);
@@ -38,7 +35,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create a new blog post
 router.post('/', postValidators, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -61,7 +57,6 @@ router.post('/', postValidators, async (req, res) => {
   }
 });
 
-// Update a blog post by ID
 router.put('/:id', postValidators, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -85,14 +80,13 @@ router.put('/:id', postValidators, async (req, res) => {
   }
 });
 
-// Delete a blog post by ID
 router.delete('/:id', async (req, res) => {
   try {
     const deletedPost = await BlogPost.findByIdAndDelete(req.params.id);
     if (!deletedPost) {
       return res.status(404).json({ message: 'Blog post not found' });
     }
-    res.status(204).send(); // No content to send back
+    res.status(204).send();
   } catch (error) {
     res
       .status(500)
@@ -100,4 +94,4 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;
